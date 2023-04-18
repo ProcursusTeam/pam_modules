@@ -45,9 +45,7 @@ __FBSDID("$FreeBSD$");
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#ifndef __APPLE__
 #include <login_cap.h>
-#endif /* !__APPLE__ */
 #include <netdb.h>
 #include <pwd.h>
 #include <stdlib.h>
@@ -57,9 +55,7 @@ __FBSDID("$FreeBSD$");
 #include <time.h>
 #include <unistd.h>
 
-#ifndef __APPLE__
 #include <libutil.h>
-#endif /* !__APPLE__ */
 
 #ifdef YP
 #include <ypclnt.h>
@@ -94,9 +90,7 @@ PAM_EXTERN int
 pam_sm_authenticate(pam_handle_t *pamh, int flags,
     int argc __unused, const char *argv[] __unused)
 {
-#ifndef __APPLE__
 	login_cap_t *lc;
-#endif /* !__APPLE__ */
 	struct passwd *pwd;
 	int retval;
 	const char *pass, *user, *realpw, *prompt;
@@ -132,23 +126,15 @@ pam_sm_authenticate(pam_handle_t *pamh, int flags,
 		    openpam_get_option(pamh, PAM_OPT_EMPTYOK) &&
 		    strcmp(crypt(emptypasswd, realpw), realpw) == 0)
 			return (PAM_SUCCESS);
-#ifndef __APPLE__
 		lc = login_getpwclass(pwd);
-#endif /* !__APPLE__ */
 	} else {
 		PAM_LOG("Doing dummy authentication");
 		realpw = "*";
-#ifndef __APPLE__
 		lc = login_getclass(NULL);
-#endif /* !__APPLE__ */
 	}
-#ifndef __APPLE__
 	prompt = login_getcapstr(lc, "passwd_prompt", NULL, NULL);
-#endif /* !__APPLE__ */
 	retval = pam_get_authtok(pamh, PAM_AUTHTOK, &pass, prompt);
-#ifndef __APPLE__
 	login_close(lc);
-#endif /* !__APPLE__ */
 	if (retval != PAM_SUCCESS)
 		return (retval);
 	PAM_LOG("Got password");
@@ -181,9 +167,7 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 	struct addrinfo hints, *res;
 	struct passwd *pwd;
 	struct timeval tp;
-#ifndef __APPLE__
 	login_cap_t *lc;
-#endif /* !__APPLE__ */
 	time_t warntime;
 	int retval;
 	const char *user;
@@ -214,15 +198,13 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 	if (strncmp(pwd->pw_passwd, LOCKED_PREFIX, LOCKED_PREFIX_LEN) == 0)
 		return (PAM_AUTH_ERR);
 
-#ifndef __APPLE__
 	lc = login_getpwclass(pwd);
 	if (lc == NULL) {
 		PAM_LOG("Unable to get login class for user %s", user);
 		return (PAM_SERVICE_ERR);
 	}
-    
+
 	PAM_LOG("Got login_cap");
-#endif /* !__APPLE__ */
 
 	if (pwd->pw_change || pwd->pw_expire)
 		gettimeofday(&tp, NULL);
@@ -233,11 +215,9 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 	 */
 
 	if (pwd->pw_expire) {
-        warntime = 1209600;
+		warntime = 1209600;
 		if (tp.tv_sec >= pwd->pw_expire) {
-#ifndef __APPLE__
 			login_close(lc);
-#endif /* !__APPLE__ */
 			return (PAM_ACCT_EXPIRED);
 		} else if (pwd->pw_expire - tp.tv_sec < warntime &&
 		    (flags & PAM_SILENT) == 0) {
@@ -248,7 +228,7 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 
 	retval = PAM_SUCCESS;
 	if (pwd->pw_change) {
-        warntime = 1209600;
+		warntime = 1209600;
 		if (tp.tv_sec >= pwd->pw_change) {
 			retval = PAM_NEW_AUTHTOK_REQD;
 		} else if (pwd->pw_change - tp.tv_sec < warntime &&
@@ -276,8 +256,7 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 		if (res != NULL)
 			freeaddrinfo(res);
 	}
-    
-#ifndef __APPLE__
+
 	/*
 	 * Check host / tty / time-of-day restrictions
 	 */
@@ -288,7 +267,6 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 		retval = PAM_AUTH_ERR;
 
 	login_close(lc);
-#endif /* !__APPLE__ */
 
 	return (retval);
 }
@@ -307,9 +285,7 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 	const void *yp_domain, *yp_server;
 #endif
 	char salt[SALTSIZE + 1];
-#ifndef __APPLE__
 	login_cap_t *lc;
-#endif /* !__APPLE__ */
 	struct passwd *pwd, *old_pwd;
 	const char *user, *old_pass, *new_pass;
 	char *encrypted;
@@ -334,8 +310,7 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 
 		PAM_LOG("PRELIM round");
 
-		if (getuid() == 0 &&
-		    (pwd->pw_fields & _PWF_SOURCE) == _PWF_FILES)
+		if (getuid() == 0)
 			/* root doesn't need the old password */
 			return (pam_set_item(pamh, PAM_OLDAUTHTOK, ""));
 #ifdef YP
@@ -417,12 +392,10 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 		if ((old_pwd = pw_dup(pwd)) == NULL)
 			return (PAM_BUF_ERR);
 
-#ifndef __APPLE__
 		lc = login_getclass(pwd->pw_class);
 		if (login_setcryptfmt(lc, password_hash, NULL) == NULL)
 			openpam_log(PAM_LOG_ERROR,
 			    "can't set password cipher, relying on default");
-#endif /* !__APPLE__ */
 		
 		/* set password expiry date */
 		pwd->pw_change = 0;
@@ -430,9 +403,9 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 		passwordtime = login_getcaptime(lc, "passwordtime", 0, 0);
 		if (passwordtime > 0)
 			pwd->pw_change = time(NULL) + passwordtime;
+#endif /* !__APPLE__ */
 		
 		login_close(lc);
-#endif /* !__APPLE__ */
 		makesalt(salt);
 		pwd->pw_passwd = crypt(new_pass, salt);
 #ifdef YP
