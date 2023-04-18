@@ -57,6 +57,8 @@ __FBSDID("$FreeBSD$");
 
 #include <libutil.h>
 
+#include <crypt.h>
+
 #ifdef YP
 #include <ypclnt.h>
 #endif
@@ -406,8 +408,7 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 #endif /* !__APPLE__ */
 		
 		login_close(lc);
-		makesalt(salt);
-		pwd->pw_passwd = crypt(new_pass, salt);
+		pwd->pw_passwd = crypt(new_pass, crypt_gensalt("$6$", 0, itoa64, strlen(itoa64)));
 #ifdef YP
 		switch (old_pwd->pw_fields & _PWF_SOURCE) {
 		case _PWF_FILES:
