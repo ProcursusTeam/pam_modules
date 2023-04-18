@@ -261,15 +261,6 @@ pam_sm_acct_mgmt(pam_handle_t *pamh, int flags __unused,
 			freeaddrinfo(res);
 	}
 
-	/*
-	 * Check host / tty / time-of-day restrictions
-	 */
-
-	if (!auth_hostok(lc, rhost, rhostip) ||
-	    !auth_ttyok(lc, tty) ||
-	    !auth_timeok(lc, time(NULL)))
-		retval = PAM_AUTH_ERR;
-
 	login_close(lc);
 
 	return (retval);
