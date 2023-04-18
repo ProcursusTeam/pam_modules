@@ -85,6 +85,8 @@ static char password_hash[] =		PASSWORD_HASH;
 #define PAM_OPT_LOCAL_PASS	"local_pass"
 #define PAM_OPT_NIS_PASS	"nis_pass"
 
+static char *saltchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789./";
+
 /*
  * authentication management
  */
@@ -408,7 +410,7 @@ pam_sm_chauthtok(pam_handle_t *pamh, int flags,
 #endif /* !__APPLE__ */
 		
 		login_close(lc);
-		pwd->pw_passwd = crypt(new_pass, crypt_gensalt("$6$", 0, itoa64, strlen(itoa64)));
+		pwd->pw_passwd = crypt(new_pass, crypt_gensalt("$6$", 0, saltchars, strlen(saltchars)));
 #ifdef YP
 		switch (old_pwd->pw_fields & _PWF_SOURCE) {
 		case _PWF_FILES:
