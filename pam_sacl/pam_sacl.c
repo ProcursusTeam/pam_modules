@@ -98,7 +98,17 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags,
 			return PAM_SUCCESS;
 		}
 	}
-
+	/* SACL groups: 
+	 *	com.apple.access_ftp:*:395:
+	 *	com.apple.access_disabled:*:396:
+	 *	com.apple.access_sessionkey:*:397:
+	 *	com.apple.access_screensharing:*:398:
+	 *	com.apple.access_ssh:*:399:
+	 *	com.apple.access_remote_ae:*:400:
+  	 * While one of the groups exist, logics under mbr_user_name_to_uuid
+    	 * is being called.
+      	 */
+#ifndef NO_SACL_GROUPS
 	/* Get the UUID. This will fail if the user is is logging in over
 	 * SMB, is specifed as DOMAIN\user or user@REALM and the directory
 	 * does not have the aliases we need.
@@ -132,7 +142,12 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags,
 		free(sacl_group);
 		return PAM_PERM_DENIED;
 	}
+#endif
 
+#if TARGET_OS_EMBEDDED
+	/* No way to check service membership, skip. */
+	ismember = 1;
+#else
 	err = mbr_check_service_membership(user_uuid, service, &ismember);
 	if (err) {
 	        if (err == ENOENT) {
@@ -149,7 +164,7 @@ PAM_EXTERN int pam_sm_acct_mgmt(pam_handle_t * pamh, int flags,
 
 	        return PAM_PERM_DENIED;
 	}
-	
+#endif
         if (ismember) {
 		DEBUG_MESSAGE("%s: allowing '%s'", MODULE_NAME, username);
 		return PAM_SUCCESS;
