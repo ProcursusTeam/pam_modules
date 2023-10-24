@@ -35,6 +35,7 @@
 #include <bootstrap_priv.h>
 #include <pwd.h>
 #include <sys/syslimits.h>
+#include <TargetConditionals.h>
 
 #define SESSION_TYPE_OPT "launchd_session_type"
 #define DEFAULT_SESSION_TYPE VPROCMGR_SESSION_BACKGROUND
@@ -127,6 +128,11 @@ pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 	mach_port_t puc = MACH_PORT_NULL;
 	kern_return_t kr = bootstrap_look_up_per_user(bootstrap_port, NULL, uid, &puc);
 	setreuid(suid, 0);
+#if TARGET_OS_EMBEDDED
+	if (ENOTSUP == kr) {
+		openpam_log(PAM_LOG_DEBUG, "Unsupported bootstrap_look_up_per_user call, skip.");
+	} else
+#endif
 	if (BOOTSTRAP_SUCCESS != kr) {
 		openpam_log(PAM_LOG_ERROR, "Could not look up per-user bootstrap for UID %u.", uid);
 		return PAM_IGNORE;
@@ -140,7 +146,7 @@ pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 	mach_port_mod_refs(mach_task_self(), bootstrap_port, MACH_PORT_RIGHT_SEND, -1);
 	task_set_bootstrap_port(mach_task_self(), puc);
 	bootstrap_port = puc;
-	
+#if !TARGET_OS_EMBEDDED
 	/* Now move ourselves into the appropriate session. */
 	if (strncmp(session_type, VPROCMGR_SESSION_BACKGROUND, sizeof(VPROCMGR_SESSION_BACKGROUND)) != 0) {
 		vproc_err_t verr = NULL;
@@ -153,7 +159,7 @@ pam_sm_open_session(pam_handle_t *pamh, int flags, int argc, const char **argv)
 		openpam_log(PAM_LOG_ERROR, "Calling _vproc_post_fork_ping failed.");
 		return PAM_SESSION_ERR;
 	}
-	
+#endif
 	return PAM_SUCCESS;
 }
 
